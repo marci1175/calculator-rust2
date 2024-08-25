@@ -140,9 +140,11 @@ impl Calculator {
 
             match expr {
                 Expression::BracketOpen => {
-                    bracket_counter += 1;
+                    if bracket_counter == 0 {
+                        bracket_pos.0 = iter_idx;
+                    }
 
-                    bracket_pos.0 = iter_idx;
+                    bracket_counter += 1;
                 }
                 Expression::BracketClose => {
                     bracket_counter -= 1;
@@ -186,7 +188,7 @@ impl Calculator {
 
         let mut last_expr: Option<Expression> = None;
 
-        while input.len() > iter_idx {
+        while input.len() > dbg!(iter_idx) {
             let expr = input[iter_idx].clone();
 
             match expr {
@@ -200,7 +202,7 @@ impl Calculator {
                 Expression::BracketClose => unreachable!(),
                 Expression::Number(_) => (),
                 _ => {
-                    let rhs = match input.clone().get(iter_idx - 1).ok_or(CalculatorError::from_expression_list(String::from(""), input.clone(), iter_idx))? {
+                    let lhs = match input.clone().get(iter_idx - 1).ok_or(CalculatorError::from_expression_list(String::from("Expression can not be turned into a number."), input.clone(), iter_idx))? {
                         Expression::Bracket(inner) => {
                             input.remove(iter_idx - 1);
                             input.insert(iter_idx - 1, Expression::Number(Self::__calc(inner.to_vec())?));
@@ -214,7 +216,7 @@ impl Calculator {
                     };
                     
                     let input_clone = input.clone();
-                    let lhs = match input_clone.get(iter_idx + 1).ok_or(CalculatorError::from_expression_list(String::from(""), input.clone(), iter_idx))? {
+                    let rhs = match input_clone.get(iter_idx + 1).ok_or(CalculatorError::from_expression_list(String::from("Expression can not be turned into a number."), input.clone(), iter_idx))? {
                         Expression::Bracket(inner) => {
                             input.remove(iter_idx + 1);
                             input.insert(iter_idx + 1, Expression::Number(Self::__calc(inner.to_vec())?));
@@ -229,19 +231,19 @@ impl Calculator {
                 
                     let calc_result = match expr {
                         Expression::Addition => {
-                            rhs + lhs
+                            lhs + rhs
                         },
                         Expression::Subtraction => {
-                            rhs - lhs
+                            lhs - rhs
                         },
                         Expression::Division => {
-                            rhs / lhs
+                            lhs / rhs
                         },
                         Expression::Multiplication => {
-                            rhs * lhs
+                            lhs * rhs
                         },
                         Expression::Power => {
-                            rhs.powf(*lhs)
+                            lhs.powf(*rhs)
                         },
                         Expression::Variable => {
                             0.0
@@ -252,6 +254,8 @@ impl Calculator {
 
                     input.drain(iter_idx - 1..=iter_idx + 1);
                     input.insert(iter_idx - 1, Expression::Number(calc_result));
+
+                    iter_idx -= 1;
                 }
             }
 
