@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod test {
-    use calculator_rs::Expression;
+    use calculator::Expression;
 
-    use calculator_rs::Calculator;
+    use calculator::Calculator;
 
     #[test]
     fn brackets() {
