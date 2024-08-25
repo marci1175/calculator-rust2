@@ -1,8 +1,8 @@
-use std::fmt::Display;
+use std::fmt::{DebugStruct, Display};
 
 use anyhow::bail;
 use thiserror::Error;
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Number(f64),
     Addition,
@@ -24,8 +24,7 @@ impl Expression {
     pub fn get_number(&self) -> anyhow::Result<f64> {
         if let Expression::Number(num) = self {
             return Ok(*num);
-        }
-        else {
+        } else {
             bail!("Expression is not a number.");
         }
     }
@@ -41,9 +40,11 @@ impl ToString for Expression {
             Expression::Multiplication => String::from("*"),
             Expression::Power => String::from("^"),
             Expression::Variable => String::from("x"),
-            Expression::Bracket(inner) => {
-                inner.iter().map(|expr| format!("{} ", expr.to_string())).collect::<Vec<String>>().concat()
-            },
+            Expression::Bracket(inner) => inner
+                .iter()
+                .map(|expr| format!("{} ", expr.to_string()))
+                .collect::<Vec<String>>()
+                .concat(),
             Expression::BracketOpen => String::from("("),
             Expression::BracketClose => String::from(")"),
         }
@@ -72,7 +73,8 @@ impl Calculator {
     /// Parses input string and outputs a vector of expressions
     fn parse(input: String) -> anyhow::Result<Vec<Expression>> {
         let unparsed_tokens = Self::tokenize(input)?;
-        let parsed_tokens = Self::evaluate(unparsed_tokens)?;
+        let pre_evaluated = Self::pre_evaluate(unparsed_tokens)?;
+        let parsed_tokens = Self::evaluate(pre_evaluated)?;
 
         Ok(parsed_tokens)
     }
@@ -126,28 +128,58 @@ impl Calculator {
         Ok(tokens)
     }
 
+    fn pre_evaluate(mut input: Vec<Expression>) -> anyhow::Result<Vec<Expression>> {
+        let mut last_expr: Option<Expression> = None;
+        let mut iter_idx = 0;
+
+        while input.len() > iter_idx {
+            let expr = input[iter_idx].clone();
+
+            match expr {
+                Expression::BracketOpen => {
+                    if let Some(expr) = last_expr {
+                        if matches!(expr, Expression::BracketClose) {
+                            input.insert(iter_idx, Expression::Multiplication);
+                        }
+                    }
+                },
+                _ => ()
+            }
+
+            last_expr = Some(expr);
+
+            iter_idx += 1;
+        }
+
+        Ok(input)
+    }
+
     fn evaluate(mut input: Vec<Expression>) -> anyhow::Result<Vec<Expression>> {
         let mut eval_buf: Vec<Expression> = vec![];
-
         let mut equation_buf: Vec<Expression> = vec![];
 
         let mut bracket_counter = 0;
         let mut bracket_pos: (usize, usize) = (0, 0);
 
         let mut iter_idx = 0;
+
         while input.len() > iter_idx {
             let expr = input[iter_idx].clone();
 
-            match expr {
+            match &expr {
                 Expression::BracketOpen => {
                     if bracket_counter == 0 {
                         bracket_pos.0 = iter_idx;
                     }
-
+                    else {
+                        equation_buf.push(Expression::BracketOpen);
+                    }
+                    
                     bracket_counter += 1;
                 }
                 Expression::BracketClose => {
                     bracket_counter -= 1;
+                    
 
                     if bracket_counter == 0 {
                         bracket_pos.1 = iter_idx;
@@ -163,12 +195,15 @@ impl Calculator {
 
                         equation_buf.clear();
                     }
+                    else {
+                        equation_buf.push(Expression::BracketClose);
+                    }
                 }
                 _ => {
                     if bracket_counter > 0 {
-                        equation_buf.push(expr);
+                        equation_buf.push(expr.clone());
                     } else {
-                        eval_buf.push(expr);
+                        eval_buf.push(expr.clone());
                     }
                 }
             }
@@ -186,9 +221,7 @@ impl Calculator {
     fn __calc(mut input: Vec<Expression>) -> anyhow::Result<f64> {
         let mut iter_idx = 0;
 
-        let mut last_expr: Option<Expression> = None;
-
-        while input.len() > dbg!(iter_idx) {
+        while input.len() > iter_idx {
             let expr = input[iter_idx].clone();
 
             match expr {
@@ -197,73 +230,171 @@ impl Calculator {
                     input.insert(iter_idx, Expression::Number(Self::__calc(inner.to_vec())?));
 
                     continue;
-                },
+                }
                 Expression::BracketOpen => unreachable!(),
                 Expression::BracketClose => unreachable!(),
                 Expression::Number(_) => (),
                 _ => {
-                    let lhs = match input.clone().get(iter_idx - 1).ok_or(CalculatorError::from_expression_list(String::from("Expression can not be turned into a number."), input.clone(), iter_idx))? {
+                    let lhs = match input.clone().get(iter_idx - 1).ok_or(
+                        CalculatorError::from_expression_list(
+                            String::from("Expression can not be turned into a number."),
+                            input.clone(),
+                            iter_idx,
+                        ),
+                    )? {
                         Expression::Bracket(inner) => {
                             input.remove(iter_idx - 1);
-                            input.insert(iter_idx - 1, Expression::Number(Self::__calc(inner.to_vec())?));
-        
+                            input.insert(
+                                iter_idx - 1,
+                                Expression::Number(Self::__calc(inner.to_vec())?),
+                            );
+
                             continue;
-                        },
+                        }
                         Expression::Number(inner) => inner.clone(),
                         _ => {
-                            bail!(CalculatorError::from_expression_list(String::from("Expression is not a number."), input.clone(), iter_idx))
-                        },
+                            bail!(CalculatorError::from_expression_list(
+                                String::from("Expression is not a number."),
+                                input.clone(),
+                                iter_idx
+                            ))
+                        }
                     };
-                    
+
                     let input_clone = input.clone();
-                    let rhs = match input_clone.get(iter_idx + 1).ok_or(CalculatorError::from_expression_list(String::from("Expression can not be turned into a number."), input.clone(), iter_idx))? {
+                    let rhs = match input_clone.get(iter_idx + 1).ok_or(
+                        CalculatorError::from_expression_list(
+                            String::from("Expression can not be turned into a number."),
+                            input.clone(),
+                            iter_idx,
+                        ),
+                    )? {
                         Expression::Bracket(inner) => {
                             input.remove(iter_idx + 1);
-                            input.insert(iter_idx + 1, Expression::Number(Self::__calc(inner.to_vec())?));
-        
+                            input.insert(
+                                iter_idx + 1,
+                                Expression::Number(Self::__calc(inner.to_vec())?),
+                            );
+
                             continue;
-                        },
+                        }
                         Expression::Number(inner) => inner,
                         _ => {
-                            bail!(CalculatorError::from_expression_list(String::from("Expression is not a number."), input.clone(), iter_idx))
-                        },
-                    };
-                
-                    let calc_result = match expr {
-                        Expression::Addition => {
-                            lhs + rhs
-                        },
-                        Expression::Subtraction => {
-                            lhs - rhs
-                        },
-                        Expression::Division => {
-                            lhs / rhs
-                        },
-                        Expression::Multiplication => {
-                            lhs * rhs
-                        },
-                        Expression::Power => {
-                            lhs.powf(*rhs)
-                        },
-                        Expression::Variable => {
-                            0.0
-                        },
-
-                        _ => unreachable!(),
+                            bail!(CalculatorError::from_expression_list(
+                                String::from("Expression is not a number."),
+                                input.clone(),
+                                iter_idx
+                            ))
+                        }
                     };
 
-                    input.drain(iter_idx - 1..=iter_idx + 1);
-                    input.insert(iter_idx - 1, Expression::Number(calc_result));
-
-                    iter_idx -= 1;
+                    if expr == Expression::Multiplication {
+                        input.drain(iter_idx - 1..=iter_idx + 1);
+                        input.insert(iter_idx - 1, Expression::Number(lhs * rhs));
+                        iter_idx -= 1;
+                    } else if expr == Expression::Division {
+                        input.drain(iter_idx - 1..=iter_idx + 1);
+                        input.insert(iter_idx - 1, Expression::Number(lhs / rhs));
+                        iter_idx -= 1;
+                    } else if expr == Expression::Power {
+                        input.drain(iter_idx - 1..=iter_idx + 1);
+                        input.insert(iter_idx - 1, Expression::Number(lhs.powf(*rhs)));
+                        iter_idx -= 1;
+                    }
                 }
             }
 
-            last_expr = Some(expr);
+            iter_idx += 1;
+        }
+        
+        iter_idx = 0;
+        
+        while input.len() > iter_idx {
+            let expr = input[iter_idx].clone();
+
+            match expr {
+                Expression::Bracket(inner) => {
+                    input.remove(iter_idx);
+                    input.insert(iter_idx, Expression::Number(Self::__calc(inner.to_vec())?));
+
+                    continue;
+                }
+                Expression::BracketOpen => unreachable!(),
+                Expression::BracketClose => unreachable!(),
+                Expression::Number(_) => (),
+                _ => {
+                    let lhs = match input.clone().get(iter_idx - 1).ok_or(
+                        CalculatorError::from_expression_list(
+                            String::from("Expression can not be turned into a number."),
+                            input.clone(),
+                            iter_idx,
+                        ),
+                    )? {
+                        Expression::Bracket(inner) => {
+                            input.remove(iter_idx - 1);
+                            input.insert(
+                                iter_idx - 1,
+                                Expression::Number(Self::__calc(inner.to_vec())?),
+                            );
+
+                            continue;
+                        }
+                        Expression::Number(inner) => inner.clone(),
+                        _ => {
+                            bail!(CalculatorError::from_expression_list(
+                                String::from("Expression is not a number."),
+                                input.clone(),
+                                iter_idx
+                            ))
+                        }
+                    };
+
+                    let input_clone = input.clone();
+                    let rhs = match input_clone.get(iter_idx + 1).ok_or(
+                        CalculatorError::from_expression_list(
+                            String::from("Expression can not be turned into a number."),
+                            input.clone(),
+                            iter_idx,
+                        ),
+                    )? {
+                        Expression::Bracket(inner) => {
+                            input.remove(iter_idx + 1);
+                            input.insert(
+                                iter_idx + 1,
+                                Expression::Number(Self::__calc(inner.to_vec())?),
+                            );
+
+                            continue;
+                        }
+                        Expression::Number(inner) => inner,
+                        _ => {
+                            bail!(CalculatorError::from_expression_list(
+                                String::from("Expression is not a number."),
+                                input.clone(),
+                                iter_idx
+                            ))
+                        }
+                    };
+
+                    if expr == Expression::Addition {
+                        input.drain(iter_idx - 1..=iter_idx + 1);
+                        input.insert(iter_idx - 1, Expression::Number(lhs + rhs));
+                        iter_idx -= 1;
+                    } else if expr == Expression::Subtraction {
+                        input.drain(iter_idx - 1..=iter_idx + 1);
+                        input.insert(iter_idx - 1, Expression::Number(lhs - rhs));
+                        iter_idx -= 1;
+                    } else if expr == Expression::Variable {
+                        input.drain(iter_idx - 1..=iter_idx + 1);
+                        input.insert(iter_idx - 1, Expression::Number(0.0));
+                        iter_idx -= 1;
+                    }
+
+                }
+            }
 
             iter_idx += 1;
         }
-
 
         Ok(input[0].get_number()?)
     }
@@ -308,13 +439,21 @@ impl CalculatorError {
         }
     }
 
-    pub fn from_expression_list(message: String, equation: Vec<Expression>, error_idx: usize) -> Self {
+    pub fn from_expression_list(
+        message: String,
+        equation: Vec<Expression>,
+        error_idx: usize,
+    ) -> Self {
         let mut equation_string = String::new();
 
         for expr in equation {
             equation_string.push_str(&format!("{} ", expr.to_string()));
         }
 
-        Self { message, equation: equation_string, error_idx: error_idx * 2 - 1 }
+        Self {
+            message,
+            equation: equation_string,
+            error_idx: error_idx * 2 - 1,
+        }
     }
 }

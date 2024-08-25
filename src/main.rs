@@ -4,9 +4,12 @@ fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
     let calculator = Calculator::new(input()).unwrap();
 
-    dbg!(calculator.calculate().inspect_err(|err| {
-        dbg!(err.backtrace());
-    }).unwrap());
+    dbg!(calculator
+        .calculate()
+        .inspect_err(|err| {
+            dbg!(err.backtrace());
+        })
+        .unwrap());
 }
 
 fn input() -> String {
