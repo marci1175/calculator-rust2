@@ -248,6 +248,9 @@ impl Calculator {
                             iter_idx,
                         ),
                     )? {
+                        Expression::Bracket(inner) => {
+                            Self::__calc(inner.to_vec(), variable_value)?
+                        }
                         Expression::Number(inner) => inner.clone(),
                         _ => {
                             bail!(CalculatorError::from_expression_list(
@@ -266,7 +269,10 @@ impl Calculator {
                             iter_idx,
                         ),
                     )? {
-                        Expression::Number(inner) => inner,
+                        Expression::Bracket(inner) => {
+                            Self::__calc(inner.to_vec(), variable_value)?
+                        }
+                        Expression::Number(inner) => *inner,
                         _ => {
                             bail!(CalculatorError::from_expression_list(
                                 String::from("Expression can not be turned into a number."),
@@ -286,7 +292,7 @@ impl Calculator {
                         iter_idx -= 1;
                     } else if expr == Expression::Power {
                         input.drain(iter_idx - 1..=iter_idx + 1);
-                        input.insert(iter_idx - 1, Expression::Number(lhs.powf(*rhs)));
+                        input.insert(iter_idx - 1, Expression::Number(lhs.powf(rhs)));
                         iter_idx -= 1;
                     }
                 }
@@ -338,15 +344,9 @@ impl Calculator {
                         ),
                     )? {
                         Expression::Bracket(inner) => {
-                            input.remove(iter_idx - 1);
-                            input.insert(
-                                iter_idx - 1,
-                                Expression::Number(Self::__calc(inner.to_vec(), variable_value)?),
-                            );
-
-                            continue;
+                            Self::__calc(inner.to_vec(), variable_value)?
                         }
-                        Expression::Number(inner) => inner.clone(),
+                        Expression::Number(inner) => *inner,
                         _ => {
                             bail!(CalculatorError::from_expression_list(
                                 String::from("Expression can not be turned into a number."),
@@ -365,15 +365,9 @@ impl Calculator {
                         ),
                     )? {
                         Expression::Bracket(inner) => {
-                            input.remove(iter_idx + 1);
-                            input.insert(
-                                iter_idx + 1,
-                                Expression::Number(Self::__calc(inner.to_vec(), variable_value)?),
-                            );
-
-                            continue;
+                            Self::__calc(inner.to_vec(), variable_value)?
                         }
-                        Expression::Number(inner) => inner,
+                        Expression::Number(inner) => *inner,
                         _ => {
                             bail!(CalculatorError::from_expression_list(
                                 String::from("Expression can not be turned into a number."),
@@ -465,7 +459,14 @@ impl CalculatorError {
         Self {
             message,
             equation: equation_string,
-            error_idx: error_idx * 2 - 1,
+            error_idx: {
+                if error_idx != 0 {
+                    error_idx * 2 - 1
+                }
+                else {
+                    0
+                }
+            },
         }
     }
 }
