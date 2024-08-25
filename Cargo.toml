@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Varga Marcell <v.marcell4000@gmail.com>"]
 description = "A simple calculator library."
-license-file = ""
+license-file = "LICENSE"
 
 [dependencies]
 anyhow = {version = "1.0.86", features = ["backtrace"]}

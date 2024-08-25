@@ -1,4 +1,5 @@
 ### A simple calculator library written for rust.
+This calculator support simple calculations including: Addition, Subtraction, Division, Multiplication, Power.
 
 ## Example
 ```rust
