@@ -30,7 +30,13 @@ mod test {
     fn brackets() {
         let calculator = Calculator::new("(2)(9)").unwrap();
 
-        assert_eq!(calculator.into_inner(), vec![Expression::Bracket(vec![Expression::Number(2.0)]), Expression::Bracket(vec![Expression::Number(9.0)])])
+        assert_eq!(
+            calculator.into_inner(),
+            vec![
+                Expression::Bracket(vec![Expression::Number(2.0)]),
+                Expression::Bracket(vec![Expression::Number(9.0)])
+            ]
+        )
     }
 
     #[test]
@@ -49,7 +55,10 @@ mod test {
 
     #[test]
     fn eq2() {
-        let calculator = Calculator::new("((5^3 + 4^2) * (12^2 - 6^3)) / (3^2 + 7) + (144/12 + 8^2) - (2^4 * 7) + 3^3").unwrap();
+        let calculator = Calculator::new(
+            "((5^3 + 4^2) * (12^2 - 6^3)) / (3^2 + 7) + (144/12 + 8^2) - (2^4 * 7) + 3^3",
+        )
+        .unwrap();
 
         assert_eq!(calculator.calculate(None).unwrap(), -643.5);
     }

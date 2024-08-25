@@ -100,7 +100,7 @@ impl Calculator {
                     }
 
                     continue;
-                },
+                }
                 'x' => Expression::Variable,
                 '(' => Expression::BracketOpen,
                 ')' => Expression::BracketClose,
@@ -136,7 +136,7 @@ impl Calculator {
 
         Ok(tokens)
     }
- 
+
     /// Evaluates (Parses) the tokens
     /// This function adds the ```Expression::Bracket``` enum.
     fn evaluate(mut input: Vec<Expression>) -> anyhow::Result<Vec<Expression>> {
@@ -155,16 +155,14 @@ impl Calculator {
                 Expression::BracketOpen => {
                     if bracket_counter == 0 {
                         bracket_pos.0 = iter_idx;
-                    }
-                    else {
+                    } else {
                         equation_buf.push(Expression::BracketOpen);
                     }
-                    
+
                     bracket_counter += 1;
                 }
                 Expression::BracketClose => {
                     bracket_counter -= 1;
-                    
 
                     if bracket_counter == 0 {
                         bracket_pos.1 = iter_idx;
@@ -179,8 +177,7 @@ impl Calculator {
                         iter_idx = bracket_pos.0;
 
                         equation_buf.clear();
-                    }
-                    else {
+                    } else {
                         equation_buf.push(Expression::BracketClose);
                     }
                 }
@@ -199,7 +196,7 @@ impl Calculator {
         Ok(eval_buf)
     }
 
-    /// Calculates the result based on the parsed string. The reason this function is separate, is that you can use different variable values for calculations, without reparsing the data. 
+    /// Calculates the result based on the parsed string. The reason this function is separate, is that you can use different variable values for calculations, without reparsing the data.
     pub fn calculate(&self, variable_value: Option<f64>) -> anyhow::Result<f64> {
         return Self::__calc(self.inner.clone(), variable_value);
     }
@@ -215,9 +212,14 @@ impl Calculator {
             match expr {
                 Expression::Bracket(ref inner) => {
                     input.remove(iter_idx);
-                    input.insert(iter_idx, Expression::Number(Self::__calc(inner.to_vec(), variable_value)?));
+                    input.insert(
+                        iter_idx,
+                        Expression::Number(Self::__calc(inner.to_vec(), variable_value)?),
+                    );
 
-                    if matches!(last_expr, Some(Expression::Bracket(_))) || matches!(last_expr, Some(Expression::Number(_))) {
+                    if matches!(last_expr, Some(Expression::Bracket(_)))
+                        || matches!(last_expr, Some(Expression::Number(_)))
+                    {
                         input.insert(iter_idx, Expression::Multiplication);
                         last_expr = None;
                     }
@@ -236,7 +238,7 @@ impl Calculator {
                     input[iter_idx] = Expression::Number(*variable_value);
 
                     continue;
-                },
+                }
                 Expression::BracketOpen => unreachable!(),
                 Expression::BracketClose => unreachable!(),
                 Expression::Number(_) => (),
@@ -248,9 +250,7 @@ impl Calculator {
                             iter_idx,
                         ),
                     )? {
-                        Expression::Bracket(inner) => {
-                            Self::__calc(inner.to_vec(), variable_value)?
-                        }
+                        Expression::Bracket(inner) => Self::__calc(inner.to_vec(), variable_value)?,
                         Expression::Number(inner) => inner.clone(),
                         _ => {
                             bail!(CalculatorError::from_expression_list(
@@ -269,9 +269,7 @@ impl Calculator {
                             iter_idx,
                         ),
                     )? {
-                        Expression::Bracket(inner) => {
-                            Self::__calc(inner.to_vec(), variable_value)?
-                        }
+                        Expression::Bracket(inner) => Self::__calc(inner.to_vec(), variable_value)?,
                         Expression::Number(inner) => *inner,
                         _ => {
                             bail!(CalculatorError::from_expression_list(
@@ -303,16 +301,21 @@ impl Calculator {
         }
 
         iter_idx = 0;
-        
+
         while input.len() > iter_idx {
             let expr = input[iter_idx].clone();
 
             match expr {
                 Expression::Bracket(ref inner) => {
                     input.remove(iter_idx);
-                    input.insert(iter_idx, Expression::Number(Self::__calc(inner.to_vec(), variable_value)?));
+                    input.insert(
+                        iter_idx,
+                        Expression::Number(Self::__calc(inner.to_vec(), variable_value)?),
+                    );
 
-                    if matches!(last_expr, Some(Expression::Bracket(_))) || matches!(last_expr, Some(Expression::Number(_))) {
+                    if matches!(last_expr, Some(Expression::Bracket(_)))
+                        || matches!(last_expr, Some(Expression::Number(_)))
+                    {
                         input.insert(iter_idx, Expression::Multiplication);
                         last_expr = None;
                     }
@@ -331,7 +334,7 @@ impl Calculator {
                     input[iter_idx] = Expression::Number(*variable_value);
 
                     continue;
-                },
+                }
                 Expression::BracketOpen => unreachable!(),
                 Expression::BracketClose => unreachable!(),
                 Expression::Number(_) => (),
@@ -343,9 +346,7 @@ impl Calculator {
                             iter_idx,
                         ),
                     )? {
-                        Expression::Bracket(inner) => {
-                            Self::__calc(inner.to_vec(), variable_value)?
-                        }
+                        Expression::Bracket(inner) => Self::__calc(inner.to_vec(), variable_value)?,
                         Expression::Number(inner) => *inner,
                         _ => {
                             bail!(CalculatorError::from_expression_list(
@@ -364,9 +365,7 @@ impl Calculator {
                             iter_idx,
                         ),
                     )? {
-                        Expression::Bracket(inner) => {
-                            Self::__calc(inner.to_vec(), variable_value)?
-                        }
+                        Expression::Bracket(inner) => Self::__calc(inner.to_vec(), variable_value)?,
                         Expression::Number(inner) => *inner,
                         _ => {
                             bail!(CalculatorError::from_expression_list(
@@ -390,7 +389,6 @@ impl Calculator {
                         input.insert(iter_idx - 1, Expression::Number(0.0));
                         iter_idx -= 1;
                     }
-
                 }
             }
 
@@ -399,7 +397,11 @@ impl Calculator {
         }
 
         if input.is_empty() || input.len() != 1 {
-            bail!(CalculatorError::from_expression_list(String::from("Empty equation or invalid equation."), input.clone(), 1));
+            bail!(CalculatorError::from_expression_list(
+                String::from("Empty equation or invalid equation."),
+                input.clone(),
+                1
+            ));
         }
 
         Ok(input[0].get_number()?)
@@ -462,8 +464,7 @@ impl CalculatorError {
             error_idx: {
                 if error_idx != 0 {
                     error_idx * 2 - 1
-                }
-                else {
+                } else {
                     0
                 }
             },
