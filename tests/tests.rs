@@ -40,4 +40,24 @@ mod test {
 
         assert_eq!(calculator.calculate(None).unwrap(), -643.5);
     }
+
+    #[test]
+    fn floating_point() {
+        let calculator = Calculator::new(
+            "6.2 - 5.2",
+        )
+        .unwrap();
+
+        assert_eq!(calculator.calculate(None).unwrap(), 1.);
+    }
+
+    #[test]
+    fn neg() {
+        let calculator = Calculator::new(
+            "-5.2",
+        )
+        .unwrap();
+
+        assert_eq!(calculator.calculate(None).unwrap(), -5.2);
+    }
 }

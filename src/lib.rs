@@ -85,10 +85,15 @@ impl Calculator {
 
         let mut num_buffer: String = String::new();
 
+        let mut last_expr: Option<Expression> = None;
+
         for (idx, char) in input.chars().enumerate() {
             let expression = match char.to_ascii_lowercase() {
                 '+' => Expression::Addition,
-                '-' => Expression::Subtraction,
+                '-' =>  {
+                    Expression::Subtraction
+
+                },
                 '*' => Expression::Multiplication,
                 '/' | ':' => Expression::Division,
                 '^' => Expression::Power,
@@ -109,7 +114,12 @@ impl Calculator {
                         num_buffer.push_str(&digit.to_string());
 
                         continue;
-                    } else {
+                    } else if char == '.' {
+                        num_buffer.push('.');
+
+                        continue;
+                    } 
+                    else {
                         bail!(CalculatorError::new(
                             String::from(
                                 "If you meant to define an unknown, only 'X' is available"
@@ -120,6 +130,8 @@ impl Calculator {
                     }
                 }
             };
+
+            last_expr = Some(expression.clone());
 
             if !num_buffer.is_empty() {
                 tokens.push(Expression::Number(num_buffer.parse::<f64>()?));
