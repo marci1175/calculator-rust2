@@ -42,7 +42,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "calculator"
+name = "calculator-lib"
 version = "0.1.0"
 dependencies = [
  "anyhow",

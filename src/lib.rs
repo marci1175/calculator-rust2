@@ -66,7 +66,7 @@ impl Calculator {
         Ok(calculator_instance)
     }
 
-    /// Returns the parsed exypressions from the ```Calculator``` instance
+    /// Returns the parsed expressions from the ```Calculator``` instance
     pub fn into_inner(&self) -> Vec<Expression> {
         self.inner.clone()
     }
